@@ -1,0 +1,58 @@
+name: PC Virtual
+
+on:
+  workflow_dispatch:
+    inputs:
+      access_password:
+        description: "Defina a senha do usuário"
+        required: true
+        type: string
+
+jobs:
+  pc_virtual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configurar usuário
+        shell: bash
+        run: |
+          echo "runner:${{ github.event.inputs.access_password }}" | sudo chpasswd
+          sudo usermod -aG sudo runner
+
+      - name: Instalar ambiente gráfico
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            xfce4 \
+            xfce4-goodies \
+            tigervnc-standalone-server
+
+      - name: Conectar ao Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTH_KEY }}
+
+      - name: Verificar recursos
+        shell: bash
+        run: |
+          echo "=== CPU ==="
+          nproc
+          echo "=== RAM ==="
+          free -h
+          echo "=== DISCO ==="
+          df -h
+          echo "=== TAILSCALE ==="
+          tailscale status
+          tailscale ip -4
+
+      - name: Finalizar
+        shell: bash
+        run: |
+          echo "PC Virtual configurado."
+          echo "O runner será encerrado automaticamente ao atingir o limite do job."
+          sleep 60
